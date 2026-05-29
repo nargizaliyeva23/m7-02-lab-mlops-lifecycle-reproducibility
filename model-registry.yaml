@@ -1,0 +1,62 @@
+```yaml
+registry:
+  name: northstar-models
+
+  stages:
+    - name: staging
+      promoted_from: successful-training-run
+      promotion_rule: automatic
+
+      gates:
+        - "Validation MAE for ETA model <= 4.5 minutes"
+        - "Per-city MAE degradation not worse than 8% versus current production model"
+        - "P95 inference latency <= 120 ms in load testing"
+        - "Model artifact successfully exported to ONNX format"
+        - "Fairness check passed across all delivery regions"
+        - "No missing lineage metadata"
+
+    - name: production
+      promoted_from: staging
+      promotion_rule: manual
+
+      gates:
+        - "Canary deployment error rate < 1%"
+        - "Production shadow traffic latency p95 <= SLA"
+        - "Prediction difference versus production model <= 5%"
+        - "Data drift score < 0.15 during 24h canary"
+        - "Bottom-3 city performance above minimum threshold"
+        - "Rollback deployment successfully tested in staging environment"
+        - "Monitoring dashboard and rollback plan attached"
+
+      approvers:
+        - "ML Lead"
+        - "Product Owner"
+        - "Platform Engineer"
+
+    - name: archived
+      promoted_from: production-replacement
+
+models:
+  - name: eta
+    owner: ml-platform-team
+    sla_p95_ms: 150
+    retention_versions: 10
+
+  - name: dispatcher-routing
+    owner: optimization-team
+    sla_p95_ms: 80
+    retention_versions: 10
+
+lineage:
+  required_fields:
+    - git_sha
+    - dataset_hash
+    - feature_pipeline_version
+    - training_image_digest
+    - random_seed
+    - hyperparameter_config
+    - evaluation_dataset_version
+    - model_framework_version
+    - mlflow_run_id
+    - deployed_feature_store_version
+```
